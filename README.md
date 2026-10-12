@@ -137,3 +137,4 @@ frontend/
 
 `main` ← `develop` ← `feature/*` (например `feature/auth`, `feature/events`, `feature/i18n`), слияние через Pull Request и code review.
 # iku-event
+# iku-event
