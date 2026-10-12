@@ -19,6 +19,8 @@ export const config = {
   corsOrigins: (env.CORS_ORIGIN ?? "http://localhost:5173").split(",").map((s) => s.trim()),
   timezone: env.APP_TIMEZONE ?? "Asia/Bishkek",
   uploadDir: path.resolve(env.UPLOAD_DIR ?? "uploads"),
+  /** Built frontend (frontend/dist). When set, the API also serves the site — one container, one domain. */
+  staticDir: env.STATIC_DIR ? path.resolve(env.STATIC_DIR) : null,
 };
 
 if (isProduction && config.jwtSecret.length < 32) {

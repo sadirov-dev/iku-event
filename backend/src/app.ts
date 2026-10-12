@@ -1,3 +1,4 @@
+import path from "node:path";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -44,4 +45,15 @@ app.use("/api/admin", adminRouter);
 app.use("/api/uploads", uploadsRouter);
 
 app.use("/api", notFoundHandler);
+
+// Production: serve the built React app; any other GET returns index.html so client-side routes work on reload.
+const staticDir = config.staticDir;
+if (staticDir) {
+  app.use(express.static(staticDir, { index: false }));
+  app.use((req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") return next();
+    res.sendFile(path.join(staticDir, "index.html"));
+  });
+}
+
 app.use(errorHandler);

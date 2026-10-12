@@ -5,7 +5,10 @@
 import { pool, query, queryOne } from "./index";
 import { config } from "../config";
 
-if (config.isProduction) throw new Error("Refusing to seed a production database");
+// Demo data in production only on explicit request (e.g. a workshop demo deploy).
+if (config.isProduction && process.env.SEED_DEMO_DATA !== "true") {
+  throw new Error("Refusing to seed a production database (set SEED_DEMO_DATA=true to load demo data)");
+}
 
 const existing = await queryOne(`SELECT COUNT(*) AS n FROM users`);
 if (existing.n > 0) {
