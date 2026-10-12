@@ -22,7 +22,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryKey: ['me'],
     queryFn: api.me,
     enabled: !!token,
-    staleTime: 60_000,
+    staleTime: 30_000,
+    // Pick up role changes made by an admin (e.g. promoted to organizer) when the tab regains focus.
+    refetchOnWindowFocus: true,
     retry: false,
   })
 

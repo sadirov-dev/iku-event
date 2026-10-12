@@ -30,14 +30,23 @@ export default function AdminUsers() {
 
   const query = { search, role, page, pageSize: PAGE_SIZE }
   const q = useQuery({ queryKey: ['admin', 'users', query], queryFn: () => api.adminUsers(query), placeholderData: keepPreviousData })
+  const [saved, setSaved] = useState<string | null>(null)
   const update = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: { role?: Role; is_blocked?: boolean } }) => api.updateUser(id, body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }),
+    mutationFn: ({ id, body }: { id: number; name: string; body: { role?: Role; is_blocked?: boolean } }) => api.updateUser(id, body),
+    onMutate: () => setSaved(null),
+    onSuccess: (_data, { name, body }) => {
+      setSaved(
+        body.role
+          ? t('admin.roleUpdated', { name, role: t(`roles.${body.role}`) })
+          : t(body.is_blocked ? 'admin.userBlocked' : 'admin.userUnblocked', { name }),
+      )
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+    },
   })
 
   return (
     <>
-      <PageHeader title={t('admin.users')} subtitle={q.data ? String(q.data.total) : undefined} />
+      <PageHeader title={t('admin.users')} subtitle={t('admin.usersHint')} />
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <input
           type="search"
@@ -58,6 +67,11 @@ export default function AdminUsers() {
       {update.isError && (
         <div className="mb-4">
           <Alert>{errorMessage(update.error, t)}</Alert>
+        </div>
+      )}
+      {saved && (
+        <div className="mb-4">
+          <Alert kind="success">{saved}</Alert>
         </div>
       )}
 
@@ -84,13 +98,22 @@ export default function AdminUsers() {
               <tbody className="divide-y divide-slate-100">
                 {q.data.items.map((u) => {
                   const self = u.id === me?.id
+                  // The main admin (and your own account) can't be demoted or blocked from here.
+                  const locked = self || u.is_main_admin
                   return (
                     <tr key={u.id} className={cn(u.is_blocked && 'bg-rose-50/40')}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <Avatar name={u.full_name} size="size-8" />
                           <div className="min-w-0">
-                            <p className="truncate font-semibold">{u.full_name}</p>
+                            <p className="flex items-center gap-2 truncate font-semibold">
+                              {u.full_name}
+                              {u.is_main_admin && (
+                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800" title={t('admin.mainAdminHint')}>
+                                  {t('admin.mainAdmin')}
+                                </span>
+                              )}
+                            </p>
                             <p className="truncate text-xs text-slate-500">{u.email}</p>
                           </div>
                         </div>
@@ -105,8 +128,9 @@ export default function AdminUsers() {
                         <select
                           className="input w-40 py-1.5"
                           value={u.role}
-                          disabled={self || update.isPending}
-                          onChange={(e) => update.mutate({ id: u.id, body: { role: e.target.value as Role } })}
+                          disabled={locked || update.isPending}
+                          title={u.is_main_admin ? t('admin.mainAdminHint') : undefined}
+                          onChange={(e) => update.mutate({ id: u.id, name: u.full_name, body: { role: e.target.value as Role } })}
                           aria-label={t('admin.usersTable.role')}
                         >
                           {ROLES.map((r) => (
@@ -121,11 +145,11 @@ export default function AdminUsers() {
                           <span className={cn('text-xs font-semibold', u.is_blocked ? 'text-rose-600' : 'text-emerald-700')}>
                             {u.is_blocked ? t('admin.usersTable.blocked') : t('admin.usersTable.active')}
                           </span>
-                          {!self && (
+                          {!locked && (
                             <button
                               className={cn('btn-sm', u.is_blocked ? 'btn-secondary' : 'btn-ghost text-rose-600')}
                               disabled={update.isPending}
-                              onClick={() => update.mutate({ id: u.id, body: { is_blocked: !u.is_blocked } })}
+                              onClick={() => update.mutate({ id: u.id, name: u.full_name, body: { is_blocked: !u.is_blocked } })}
                             >
                               {u.is_blocked ? t('admin.usersTable.unblock') : t('admin.usersTable.block')}
                             </button>

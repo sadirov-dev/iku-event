@@ -52,6 +52,11 @@ export default function AdminEvents() {
           </Link>
         }
       />
+      {!isAdmin && (
+        <div className="mb-4">
+          <Alert kind="info">{t('admin.reviewHint')}</Alert>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <input

@@ -12,7 +12,7 @@ export default function AdminLayout() {
   const isAdmin = user?.role === 'ADMIN'
 
   const links = [
-    ...(isAdmin ? [{ to: '/admin', label: t('admin.dashboard'), icon: LayoutDashboard, end: true }] : []),
+    { to: '/admin', label: t('admin.dashboard'), icon: LayoutDashboard, end: true },
     { to: '/admin/events', label: t('admin.events'), icon: CalendarRange, end: false },
     ...(isAdmin
       ? [
@@ -28,7 +28,7 @@ export default function AdminLayout() {
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
           <Logo />
           <span className="hidden rounded-full bg-slate-900 px-2.5 py-0.5 text-xs font-semibold text-white sm:inline">
-            {t(`roles.${user!.role}`)}
+            {isAdmin ? t('nav.adminPanel') : t('nav.organizerPanel')}
           </span>
           <div className="ml-auto flex items-center gap-2">
             <LanguageSwitcher />

@@ -21,6 +21,16 @@ import { api } from '../lib/api'
 import LanguageSwitcher from './LanguageSwitcher'
 import { cn } from './ui'
 
+/** Staff get a panel: admins the admin panel, organizers their own one. Students get null. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function usePanelLink() {
+  const { t } = useTranslation()
+  const { user } = useAuth()
+  if (user?.role === 'ADMIN') return { to: '/admin', label: t('nav.adminPanel') }
+  if (user?.role === 'ORGANIZER') return { to: '/admin', label: t('nav.organizerPanel') }
+  return null
+}
+
 export function Logo() {
   return (
     <Link to="/" className="flex items-center gap-2 font-extrabold tracking-tight text-slate-900">
@@ -86,6 +96,7 @@ function UserMenu() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const panel = usePanelLink()
 
   useEffect(() => {
     if (!open) return
@@ -95,7 +106,6 @@ function UserMenu() {
   }, [open])
 
   if (!user) return null
-  const isStaff = user.role === 'ADMIN' || user.role === 'ORGANIZER'
 
   return (
     <div className="relative" ref={ref}>
@@ -113,11 +123,12 @@ function UserMenu() {
           <div className="px-3 py-2">
             <p className="truncate text-sm font-semibold">{user.full_name}</p>
             <p className="truncate text-xs text-slate-500">{user.email}</p>
+            <p className="mt-1 text-xs font-semibold text-brand-700">{t(`roles.${user.role}`)}</p>
           </div>
           <hr className="my-1 border-slate-100" />
           <MenuLink to="/profile" icon={<UserIcon className="size-4" />}>{t('nav.profile')}</MenuLink>
           <MenuLink to="/my-events" icon={<Ticket className="size-4" />}>{t('nav.myEvents')}</MenuLink>
-          {isStaff && <MenuLink to="/admin" icon={<LayoutDashboard className="size-4" />}>{t('nav.admin')}</MenuLink>}
+          {panel && <MenuLink to={panel.to} icon={<LayoutDashboard className="size-4" />}>{panel.label}</MenuLink>}
           <hr className="my-1 border-slate-100" />
           <button
             role="menuitem"
@@ -148,9 +159,10 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
   const { t } = useTranslation()
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const panel = usePanelLink()
   if (!open) return null
-  const isStaff = user?.role === 'ADMIN' || user?.role === 'ORGANIZER'
   const links = [
+    ...(panel ? [{ to: panel.to, label: panel.label, icon: LayoutDashboard }] : []),
     { to: '/', label: t('nav.home'), icon: Home },
     { to: '/events', label: t('nav.events'), icon: Sparkles },
     { to: '/calendar', label: t('nav.calendar'), icon: CalendarDays },
@@ -162,7 +174,6 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
           { to: '/profile', label: t('nav.profile'), icon: UserIcon },
         ]
       : []),
-    ...(isStaff ? [{ to: '/admin', label: t('nav.admin'), icon: LayoutDashboard }] : []),
   ]
 
   return (
@@ -224,10 +235,12 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
 function BottomNav() {
   const { t } = useTranslation()
   const { user } = useAuth()
+  const panel = usePanelLink()
   const items = [
     { to: '/', label: t('nav.home'), icon: Home },
     { to: '/events', label: t('nav.events'), icon: Sparkles },
-    { to: '/calendar', label: t('nav.calendar'), icon: CalendarDays },
+    // Staff swap the calendar (still in the menu) for their panel.
+    panel ? { to: panel.to, label: t('nav.panelShort'), icon: LayoutDashboard } : { to: '/calendar', label: t('nav.calendar'), icon: CalendarDays },
     { to: '/my-events', label: t('nav.myEventsShort'), icon: Ticket },
     user ? { to: '/profile', label: t('nav.profile'), icon: UserIcon } : { to: '/login', label: t('nav.login'), icon: UserIcon },
   ]
@@ -261,6 +274,7 @@ function BottomNav() {
 export default function Layout() {
   const { t } = useTranslation()
   const { user, isLoading } = useAuth()
+  const panel = usePanelLink()
   const [drawer, setDrawer] = useState(false)
   const location = useLocation()
 
@@ -302,6 +316,13 @@ export default function Layout() {
             <div className="hidden sm:block">
               <LanguageSwitcher />
             </div>
+            {panel && (
+              <div className="hidden lg:block">
+                <Link to={panel.to} className="btn-primary btn-sm" title={panel.label}>
+                  <LayoutDashboard className="size-4" /> <span className="hidden xl:inline">{panel.label}</span>
+                </Link>
+              </div>
+            )}
             {user && <NotificationBell />}
             <div className="hidden lg:block">
               {user ? (

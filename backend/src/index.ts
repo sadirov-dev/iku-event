@@ -1,6 +1,10 @@
 import { app } from "./app";
 import { config } from "./config";
 import { sendDueReminders } from "./lib/notifications";
+import { bootstrap } from "./db/bootstrap";
+
+// Reference data + main admin and the demo accounts — always present, whatever the database state.
+await bootstrap();
 
 app.listen(config.port, () => {
   console.log(`IKU Events API listening on http://localhost:${config.port}`);

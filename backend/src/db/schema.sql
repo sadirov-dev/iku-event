@@ -175,3 +175,7 @@ CREATE TABLE IF NOT EXISTS certificates (
   issued_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (student_id, event_id)
 );
+
+-- The main admin: created from ADMIN_EMAIL / ADMIN_PASSWORD on every start, cannot be blocked or demoted.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_main_admin BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE UNIQUE INDEX IF NOT EXISTS users_single_main_admin ON users (is_main_admin) WHERE is_main_admin;

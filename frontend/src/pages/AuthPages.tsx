@@ -1,11 +1,12 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
 import { api, errorMessage, fieldErrors } from '../lib/api'
 import { Alert, Field, Spinner, cn } from '../components/ui'
 import i18n from '../i18n'
+import type { Role } from '../lib/types'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -31,6 +32,30 @@ function useRedirectTarget() {
   return from && from.startsWith('/') && !from.startsWith('//') ? from : '/'
 }
 
+/** Staff with no specific destination land in their panel, so the role change is visible at once. */
+const homeFor = (role: Role, target: string) =>
+  target !== '/' ? target : role === 'ADMIN' || role === 'ORGANIZER' ? '/admin' : '/'
+
+/** Shown instead of a silent redirect, so switching between accounts is always possible. */
+function AlreadySignedIn({ target }: { target: string }) {
+  const { t } = useTranslation()
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
+  if (!user) return null
+  return (
+    <AuthShell title={t('auth.signedInAs', { name: user.full_name })} subtitle={`${user.email} · ${t(`roles.${user.role}`)}`} footer={null}>
+      <div className="space-y-3">
+        <button className="btn-primary w-full py-3" onClick={() => navigate(homeFor(user.role, target), { replace: true })}>
+          {t('auth.continue')}
+        </button>
+        <button className="btn-secondary w-full py-3" onClick={() => signOut()}>
+          {t('auth.switchAccount')}
+        </button>
+      </div>
+    </AuthShell>
+  )
+}
+
 export function LoginPage() {
   const { t } = useTranslation()
   const { user, signIn } = useAuth()
@@ -43,11 +68,11 @@ export function LoginPage() {
     mutationFn: () => api.login({ email: email.trim(), password }),
     onSuccess: ({ token, user }) => {
       signIn(token, user)
-      navigate(target, { replace: true })
+      navigate(homeFor(user.role, target), { replace: true })
     },
   })
 
-  if (user && !login.isSuccess) return <Navigate to={target} replace />
+  if (user && !login.isSuccess) return <AlreadySignedIn target={target} />
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -96,21 +121,9 @@ export function LoginPage() {
       {import.meta.env.DEV && (
         <div className="mt-6 rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
           <p className="mb-1 font-semibold">{t('auth.demo')}</p>
-          {[
-            ['student@iku.kg', 'Student123!'],
-            ['organizer@iku.kg', 'Organizer123!'],
-            ['admin@iku.kg', 'Admin123!'],
-          ].map(([e, p]) => (
-            <button
-              key={e}
-              type="button"
-              className="block font-mono hover:text-brand-600"
-              onClick={() => {
-                setEmail(e!)
-                setPassword(p!)
-              }}
-            >
-              {e} / {p}
+          {['admin@iku.kg', 'organizer@iku.kg', 'student@iku.kg'].map((e) => (
+            <button key={e} type="button" className="block font-mono hover:text-brand-600" onClick={() => setEmail(e)}>
+              {e}
             </button>
           ))}
         </div>
@@ -136,7 +149,7 @@ export function RegisterPage() {
     onError: (err) => setErrors(fieldErrors(err)),
   })
 
-  if (user && !register.isSuccess) return <Navigate to={target} replace />
+  if (user && !register.isSuccess) return <AlreadySignedIn target={target} />
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [k]: e.target.value }))
 

@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { Server } from "node:http";
 import { app } from "../src/app";
 import { pool } from "../src/db";
+import { ensureSystemAccounts, systemAccounts } from "../src/db/bootstrap";
 
 let server: Server;
 let base: string;
@@ -50,9 +51,9 @@ let organizer: string;
 let fresh: string;
 
 beforeAll(async () => {
-  admin = await login("admin@iku.kg", "Admin123!");
-  student = await login("student@iku.kg", "Student123!");
-  organizer = await login("organizer@iku.kg", "Organizer123!");
+  admin = await login(systemAccounts.admin.email, systemAccounts.admin.password!);
+  student = await login(systemAccounts.student.email, systemAccounts.student.password!);
+  organizer = await login(systemAccounts.organizer.email, systemAccounts.organizer.password!);
   const email = `new${Date.now()}@iku.kg`;
   const res = await api("POST", "/auth/register", { email, password: "Password1!", full_name: "New Student" });
   fresh = res.body.token;
@@ -65,13 +66,13 @@ async function findEvent(titleEn: string, token?: string) {
 
 describe("auth", () => {
   test("rejects wrong password with a translatable code", async () => {
-    const res = await api("POST", "/auth/login", { email: "admin@iku.kg", password: "nope" });
+    const res = await api("POST", "/auth/login", { email: systemAccounts.admin.email, password: "nope" });
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe("INVALID_CREDENTIALS");
   });
 
   test("duplicate email is rejected", async () => {
-    const res = await api("POST", "/auth/register", { email: "student@iku.kg", password: "Password1!", full_name: "X Y" });
+    const res = await api("POST", "/auth/register", { email: systemAccounts.student.email, password: "Password1!", full_name: "X Y" });
     expect(res.body.error.code).toBe("EMAIL_TAKEN");
   });
 
@@ -239,5 +240,53 @@ describe("admin & announcements", () => {
     const res = await api("GET", "/events/abc");
     expect(res.status).toBe(400);
     expect(JSON.stringify(res.body)).not.toContain("at ");
+  });
+});
+
+describe("roles and the main admin", () => {
+  const findUser = async (search: string) =>
+    (await api("GET", `/admin/users?search=${encodeURIComponent(search)}`, undefined, admin)).body.items[0];
+
+  test("exactly one main admin, and it is the configured account", async () => {
+    await ensureSystemAccounts(); // idempotent: a second run changes nothing
+    const res = await api("GET", "/admin/users?role=ADMIN", undefined, admin);
+    const mains = res.body.items.filter((u: any) => u.is_main_admin);
+    expect(mains.length).toBe(1);
+    expect(mains[0].email).toBe(systemAccounts.admin.email);
+    expect((await api("GET", "/auth/me", undefined, admin)).body.is_main_admin).toBe(true);
+  });
+
+  test("another admin cannot block or demote the main admin", async () => {
+    const helper = await findUser("student3@iku.kg");
+    await api("PATCH", `/admin/users/${helper.id}`, { role: "ADMIN" }, admin);
+    const helperToken = await login("student3@iku.kg", "Student123!");
+    const main = await findUser(systemAccounts.admin.email);
+
+    const demote = await api("PATCH", `/admin/users/${main.id}`, { role: "STUDENT" }, helperToken);
+    expect(demote.status).toBe(403);
+    expect(demote.body.error.code).toBe("MAIN_ADMIN_PROTECTED");
+    const block = await api("PATCH", `/admin/users/${main.id}`, { is_blocked: true }, helperToken);
+    expect(block.body.error.code).toBe("MAIN_ADMIN_PROTECTED");
+
+    await api("PATCH", `/admin/users/${helper.id}`, { role: "STUDENT" }, admin);
+  });
+
+  test("a student promoted to organizer can create and edit only their own events", async () => {
+    const user = await findUser("student2@iku.kg");
+    await api("PATCH", `/admin/users/${user.id}`, { role: "ORGANIZER" }, admin);
+    const token = await login("student2@iku.kg", "Student123!");
+
+    const created = await api(
+      "POST", "/events",
+      { title_ru: "Событие нового организатора", date: "2030-03-01", start_time: "10:00", end_time: "11:00", status: "PENDING" },
+      token,
+    );
+    expect(created.status).toBe(201);
+    expect((await api("PATCH", `/events/${created.body.id}`, { capacity: 30 }, token)).status).toBe(200);
+    expect((await api("PATCH", `/events/${created.body.id}`, { status: "PUBLISHED" }, token)).status).toBe(403);
+    expect((await api("PATCH", `/events/${created.body.id}`, { status: "PUBLISHED" }, admin)).status).toBe(200);
+
+    await api("DELETE", `/events/${created.body.id}`, undefined, admin);
+    await api("PATCH", `/admin/users/${user.id}`, { role: "STUDENT" }, admin);
   });
 });

@@ -1,4 +1,4 @@
-import { Link, Navigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Plus, X } from 'lucide-react'
@@ -26,6 +26,61 @@ function StatTile({ label, value, sub, to }: { label: string; value: string | nu
   )
 }
 
+/** ТЗ §20: the organizer's own numbers — events, participants, upcoming, completed. */
+function OrganizerDashboard() {
+  const { t } = useTranslation()
+  const q = useQuery({
+    queryKey: ['events', 'organizer-overview'],
+    queryFn: () => api.events({ mine: 'true', pageSize: 100, sort: 'date_asc' }),
+  })
+  if (q.isError) return <ErrorState message={errorMessage(q.error, t)} onRetry={() => q.refetch()} />
+
+  const items = q.data?.items ?? []
+  const upcoming = items.filter((e) => e.status === 'PUBLISHED' && !e.is_past)
+  const count = (pred: (s: string, past: boolean) => boolean) => items.filter((e) => pred(e.status, e.is_past)).length
+
+  return (
+    <>
+      <PageHeader
+        title={t('nav.organizerPanel')}
+        subtitle={t('admin.reviewHint')}
+        actions={
+          <Link to="/admin/events/new" className="btn-primary">
+            <Plus className="size-4" /> {t('admin.newEvent')}
+          </Link>
+        }
+      />
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {!q.data ? (
+          Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)
+        ) : (
+          <>
+            <StatTile label={t('admin.org.total')} value={q.data.total} to="/admin/events" />
+            <StatTile label={t('admin.org.participants')} value={items.reduce((n, e) => n + e.registered_count, 0)} />
+            <StatTile label={t('admin.org.upcoming')} value={upcoming.length} />
+            <StatTile label={t('admin.org.completed')} value={count((s, past) => s === 'COMPLETED' || (s === 'PUBLISHED' && past))} />
+            <StatTile label={t('admin.org.pending')} value={count((s) => s === 'PENDING')} to="/admin/events?status=PENDING" />
+            <StatTile label={t('admin.org.drafts')} value={count((s) => s === 'DRAFT')} to="/admin/events?status=DRAFT" />
+          </>
+        )}
+      </div>
+      <section className="card p-3">
+        <div className="flex items-center justify-between px-2 pb-1 pt-2">
+          <h2 className="font-bold">{t('admin.org.nextEvents')}</h2>
+          <Link to="/admin/events" className="text-sm font-semibold text-brand-600">
+            {t('home.seeAll')}
+          </Link>
+        </div>
+        {q.data && upcoming.length === 0 ? (
+          <p className="px-2 py-6 text-sm text-slate-500">{t('admin.org.empty')}</p>
+        ) : (
+          upcoming.slice(0, 6).map((e) => <EventRow key={e.id} event={e} />)
+        )}
+      </section>
+    </>
+  )
+}
+
 export default function AdminDashboard() {
   const { t } = useTranslation()
   const L = useLocalize()
@@ -42,8 +97,8 @@ export default function AdminDashboard() {
     },
   })
 
-  // Organizers don't get the global dashboard — their home is their own event list.
-  if (user?.role !== 'ADMIN') return <Navigate to="/admin/events" replace />
+  // Organizers get their own overview; the global numbers are for admins only.
+  if (user?.role !== 'ADMIN') return <OrganizerDashboard />
 
   if (q.isError) return <ErrorState message={errorMessage(q.error, t)} onRetry={() => q.refetch()} />
 
@@ -61,9 +116,9 @@ export default function AdminDashboard() {
         }
       />
 
-      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {!s ? (
-          Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)
+          Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)
         ) : (
           <>
             <StatTile label={t('admin.stats.students')} value={s.students} to="/admin/users?role=STUDENT" />
@@ -76,6 +131,7 @@ export default function AdminDashboard() {
             <StatTile label={t('admin.stats.registrations')} value={s.registrations} />
             <StatTile label={t('admin.stats.pending')} value={s.pending_events} to="/admin/events?status=PENDING" />
             <StatTile label={t('admin.stats.attendance')} value={s.attendance_rate === null ? '—' : `${s.attendance_rate}%`} />
+            <StatTile label={t('admin.stats.important')} value={s.important_announcements} to="/admin/announcements" />
           </>
         )}
       </div>

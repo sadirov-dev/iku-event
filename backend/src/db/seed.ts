@@ -1,107 +1,58 @@
 /**
- * Development seed data. Dates are relative to "today" so the home page always
- * has something happening today, this week and in the past.
+ * Demo data for development and workshop demos. Dates are relative to "today" so the home
+ * page always has something happening today, this week and in the past. Reference data and
+ * the three system accounts come from bootstrap.ts.
  */
 import { pool, query, queryOne } from "./index";
 import { config } from "../config";
+import { ensureReferenceData, ensureSystemAccounts, systemAccounts } from "./bootstrap";
 
 // Demo data in production only on explicit request (e.g. a workshop demo deploy).
 if (config.isProduction && process.env.SEED_DEMO_DATA !== "true") {
   throw new Error("Refusing to seed a production database (set SEED_DEMO_DATA=true to load demo data)");
 }
 
-const existing = await queryOne(`SELECT COUNT(*) AS n FROM users`);
+const existing = await queryOne(`SELECT COUNT(*) AS n FROM events`);
 if (existing.n > 0) {
-  console.log("Database already has data — run `bun run db:reset` to start fresh.");
+  console.log("Demo data already present — run `bun run db:reset` to start fresh.");
   await pool.end();
   process.exit(0);
 }
 
-// ---------- Categories ----------
-const categories = [
-  ["it", "IT", "IT", "IT", "💻", "#6366f1"],
-  ["education", "Билим берүү", "Образование", "Education", "📚", "#0ea5e9"],
-  ["sport", "Спорт", "Спорт", "Sport", "⚽", "#22c55e"],
-  ["entertainment", "Көңүл ачуу", "Развлечения", "Entertainment", "🎉", "#ec4899"],
-  ["contests", "Сынактар", "Конкурсы", "Contests", "🏆", "#f59e0b"],
-  ["festivals", "Фестивалдар", "Фестивали", "Festivals", "🎪", "#f97316"],
-  ["culture", "Маданият", "Культура", "Culture", "🎭", "#a855f7"],
-  ["career", "Карьера", "Карьера", "Career", "💼", "#14b8a6"],
-  ["other", "Башка", "Другое", "Other", "✨", "#64748b"],
-];
-const cat: Record<string, number> = {};
-for (const [i, [slug, ky, ru, en, icon, color]] of categories.entries()) {
-  const row = await queryOne(
-    `INSERT INTO categories (slug, name_ky, name_ru, name_en, icon, color, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-    [slug, ky, ru, en, icon, color, i],
-  );
-  cat[slug!] = row.id;
+// ---------- Reference data + system accounts ----------
+await ensureReferenceData();
+const accounts = await ensureSystemAccounts();
+if (!accounts.admin || !accounts.organizer || !accounts.student) {
+  throw new Error("Demo data needs ADMIN_PASSWORD, ORGANIZER_PASSWORD and STUDENT_PASSWORD");
 }
+const { admin, organizer, student } = accounts;
 
-// ---------- Venues ----------
-const venues: [string, string, string, string, string, string, number][] = [
-  ["Чоң зал", "Главный зал", "Main Hall", "A", "1", "—", 300],
-  ["Компьютердик класс", "Компьютерный класс", "Computer Lab", "B", "2", "214", 40],
-  ["Спорт аянтчасы", "Спортивная площадка", "Sports Ground", "—", "—", "—", 500],
-  ["Конференц-зал", "Конференц-зал", "Conference Hall", "A", "3", "301", 80],
-  ["101-кабинет", "Кабинет 101", "Room 101", "A", "1", "101", 30],
-];
-const venue: number[] = [];
-for (const [ky, ru, en, building, floor, room, capacity] of venues) {
-  const row = await queryOne(
-    `INSERT INTO venues (name_ky, name_ru, name_en, building, floor, room, capacity) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-    [ky, ru, en, building, floor, room, capacity],
-  );
-  venue.push(row.id);
-}
+const cat: Record<string, number> = Object.fromEntries(
+  (await query(`SELECT slug, id FROM categories`)).map((c) => [c.slug, c.id]),
+);
+const venueByName: Record<string, number> = Object.fromEntries(
+  (await query(`SELECT name_ru, id FROM venues`)).map((v) => [v.name_ru, v.id]),
+);
+const venue = ["Главный зал", "Компьютерный класс", "Спортивная площадка", "Конференц-зал", "Кабинет 101"].map(
+  (name) => venueByName[name] ?? null,
+);
 
-// ---------- Achievements ----------
-const achievements = [
-  ["FIRST_EVENT", "🏆", "Биринчи иш-чара", "Первое мероприятие", "First event", "Биринчи иш-чарага катышты", "Посетил первое мероприятие", "Attended your first event"],
-  ["FIVE_EVENTS", "🎯", "5 иш-чара", "5 мероприятий", "5 events", "5 иш-чарага катышты", "Посетил 5 мероприятий", "Attended 5 events"],
-  ["ACTIVE_STUDENT", "🔥", "Активдүү студент", "Активный студент", "Active student", "10 иш-чарага катышты", "Посетил 10 мероприятий", "Attended 10 events"],
-  ["IT_PARTICIPANT", "💻", "IT-сынактын катышуучусу", "Участник IT-конкурса", "IT contest participant", "IT иш-чарасына катышты", "Принял участие в IT-мероприятии", "Took part in an IT event"],
-  ["VOLUNTEER", "🤝", "Волонтёр", "Волонтёр", "Volunteer", "Иш-чараларга жардам берди", "Помогал в организации мероприятий", "Helped organise events"],
-];
-for (const a of achievements) {
-  await query(
-    `INSERT INTO achievements (code, icon, name_ky, name_ru, name_en, description_ky, description_ru, description_en)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-    a,
-  );
-}
-
-// ---------- Users ----------
-async function createUser(email: string, password: string, fullName: string, role: string, profile?: string[]) {
-  const u = await queryOne(
-    `INSERT INTO users (email, password_hash, full_name, role) VALUES ($1, $2, $3, $4) RETURNING id`,
-    [email, await Bun.password.hash(password), fullName, role],
-  );
-  if (profile) {
-    await query(
-      `INSERT INTO student_profiles (user_id, student_code, group_name, faculty, phone) VALUES ($1,$2,$3,$4,$5)`,
-      [u.id, ...profile],
-    );
-  }
-  return u.id as number;
-}
-
-const admin = await createUser("admin@iku.kg", "Admin123!", "Айгуль Сыдыкова", "ADMIN");
-const organizer = await createUser("organizer@iku.kg", "Organizer123!", "Бакыт Асанов", "ORGANIZER");
-await query(`INSERT INTO organizer_profiles (user_id, organization, phone) VALUES ($1, $2, $3)`, [
-  organizer, "Студенческий совет IKU", "+996 555 100 200",
-]);
-const student = await createUser("student@iku.kg", "Student123!", "Азамат Токтогулов", "STUDENT", [
-  "IKU-2024-0117", "ПИ-22", "Факультет информационных технологий", "+996 700 123 456",
-]);
+// ---------- Demo students ----------
+const demoPasswordHash = await Bun.password.hash("Student123!");
 const others: number[] = [];
 const names = ["Нургуль Абдыкадырова", "Эмир Жумабеков", "Айпери Мамытова", "Тимур Исаков", "Жылдыз Осмонова"];
 for (const [i, name] of names.entries()) {
-  others.push(
-    await createUser(`student${i + 1}@iku.kg`, "Student123!", name, "STUDENT", [
-      `IKU-2024-02${i}0`, i % 2 ? "ЭК-21" : "ПИ-23", i % 2 ? "Экономический факультет" : "Факультет информационных технологий", "",
-    ]),
+  const u = await queryOne(
+    `INSERT INTO users (email, password_hash, full_name, role) VALUES ($1, $2, $3, 'STUDENT')
+     ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email RETURNING id`,
+    [`student${i + 1}@iku.kg`, demoPasswordHash, name],
   );
+  await query(
+    `INSERT INTO student_profiles (user_id, student_code, group_name, faculty, phone) VALUES ($1,$2,$3,$4,$5)
+     ON CONFLICT (user_id) DO NOTHING`,
+    [u.id, `IKU-2024-02${i}0`, i % 2 ? "ЭК-21" : "ПИ-23", i % 2 ? "Экономический факультет" : "Факультет информационных технологий", ""],
+  );
+  others.push(u.id);
 }
 
 // ---------- Events ----------
@@ -109,7 +60,7 @@ type Seed = {
   t: [string | null, string, string | null];
   d: [string | null, string, string | null];
   cat: string;
-  venue: number;
+  venue?: number | null;
   day: number;
   start: string;
   end: string;
@@ -129,7 +80,7 @@ const events: Seed[] = [
       "Команды за 6 часов создают проект, который улучшит жизнь кампуса. Лучшие команды получат призы и стажировки!",
       "Teams have 6 hours to build a project that improves campus life. Prizes and internships for the best teams!",
     ],
-    cat: "it", venue: venue[1]!, day: 0, start: "18:00", end: "23:30", capacity: 40,
+    cat: "it", venue: venue[1], day: 0, start: "18:00", end: "23:30", capacity: 40,
     req: ["Ноутбук, 2–4 кишиден турган команда", "Ноутбук, команда из 2–4 человек", "Laptop, team of 2–4 people"],
     program: [
       "18:00 — Ачылыш\n18:30 — Иштөө\n23:00 — Презентациялар",
@@ -144,7 +95,7 @@ const events: Seed[] = [
       "Поёшь, танцуешь или читаешь стендап? Сцена — твоя! Приходи выступить или поддержать друзей.",
       "Sing, dance or do stand-up? The stage is yours! Perform or come cheer your friends on.",
     ],
-    cat: "entertainment", venue: venue[0]!, day: 0, start: "19:00", end: "22:00", capacity: 250,
+    cat: "entertainment", venue: venue[0], day: 0, start: "19:00", end: "22:00", capacity: 250,
   },
   {
     t: ["Англис тили клубу", "Разговорный клуб английского", "English Speaking Club"],
@@ -153,12 +104,12 @@ const events: Seed[] = [
       "Практика разговорного английского в неформальной обстановке. Подходит для любого уровня.",
       "Practise spoken English in a relaxed setting. All levels welcome.",
     ],
-    cat: "education", venue: venue[4]!, day: 1, start: "15:00", end: "16:30", capacity: 20,
+    cat: "education", venue: venue[4], day: 1, start: "15:00", end: "16:30", capacity: 20,
   },
   {
     t: ["Математика олимпиадасы", "Олимпиада по математике", "Math Olympiad"],
     d: ["Университеттик математика олимпиадасы.", "Внутривузовская олимпиада по математике.", "University-wide math olympiad."],
-    cat: "contests", venue: venue[3]!, day: 2, start: "10:00", end: "13:00", capacity: 60, deadlineDays: -1,
+    cat: "contests", venue: venue[3], day: 2, start: "10:00", end: "13:00", capacity: 60, deadlineDays: -1,
   },
   {
     t: ["Спорт күнү", "Спортивный день", "Sport Day"],
@@ -167,12 +118,12 @@ const events: Seed[] = [
       "Футбол, волейбол, эстафета и много других соревнований между факультетами.",
       "Football, volleyball, relays and more — faculties compete for the cup.",
     ],
-    cat: "sport", venue: venue[2]!, day: 3, start: "10:00", end: "16:00", capacity: null,
+    cat: "sport", venue: venue[2], day: 3, start: "10:00", end: "16:00", capacity: null,
   },
   {
     t: [null, "Субботник в парке", null],
     d: [null, "Волонтёрская уборка парка рядом с кампусом. Инвентарь выдадим на месте.", null],
-    cat: "other", venue: venue[2]!, day: 4, start: "09:00", end: "12:00", capacity: 50,
+    cat: "other", venue: venue[2], day: 4, start: "09:00", end: "12:00", capacity: 50,
   },
   {
     t: ["Карьера жарманкеси", "Ярмарка карьеры", "Career Fair"],
@@ -181,17 +132,17 @@ const events: Seed[] = [
       "Более 20 компаний предлагают стажировки и вакансии. Возьмите с собой резюме!",
       "20+ companies offering internships and jobs. Bring your CV!",
     ],
-    cat: "career", venue: venue[3]!, day: 5, start: "11:00", end: "17:00", capacity: 300,
+    cat: "career", venue: venue[3], day: 5, start: "11:00", end: "17:00", capacity: 300,
   },
   {
     t: ["Футбол: IKU vs КТУ", "Футбол: IKU vs КТУ", "Football: IKU vs KTU"],
     d: ["Достук беттеши.", "Товарищеский матч сборных университетов.", "Friendly match between university teams."],
-    cat: "sport", venue: venue[2]!, day: 6, start: "16:00", end: "18:00", capacity: null, status: "CANCELLED",
+    cat: "sport", venue: venue[2], day: 6, start: "16:00", end: "18:00", capacity: null, status: "CANCELLED",
   },
   {
     t: ["Шахмат турнири", "Шахматный турнир", "Chess Tournament"],
     d: ["Швейцар системасы боюнча турнир.", "Турнир по швейцарской системе, 7 туров.", "Swiss-system tournament, 7 rounds."],
-    cat: "contests", venue: venue[4]!, day: 7, start: "14:00", end: "18:00", capacity: 32,
+    cat: "contests", venue: venue[4], day: 7, start: "14:00", end: "18:00", capacity: 32,
   },
   {
     t: ["Сүрөт тартуу мастер-классы", "Мастер-класс по фотографии", "Photography Masterclass"],
@@ -200,7 +151,7 @@ const events: Seed[] = [
       "Научитесь делать профессиональные снимки на смартфон.",
       "Learn to take professional-looking photos with your phone.",
     ],
-    cat: "culture", venue: venue[4]!, day: 8, start: "15:00", end: "17:00", capacity: 3,
+    cat: "culture", venue: venue[4], day: 8, start: "15:00", end: "17:00", capacity: 3,
   },
   {
     t: ["Күзгү фестиваль", "Осенний фестиваль", "Autumn Festival"],
@@ -209,7 +160,7 @@ const events: Seed[] = [
       "Национальная кухня, музыка, игры и ярмарка — праздник для всего кампуса.",
       "Traditional food, music, games and a fair — a celebration for the whole campus.",
     ],
-    cat: "festivals", venue: venue[2]!, day: 9, start: "12:00", end: "20:00", capacity: null,
+    cat: "festivals", venue: venue[2], day: 9, start: "12:00", end: "20:00", capacity: null,
   },
   {
     t: ["Кыргыз маданиятынын кечеси", "Вечер кыргызской культуры", "Kyrgyz Culture Evening"],
@@ -218,17 +169,17 @@ const events: Seed[] = [
       "Комуз, сказители «Манаса» и национальные танцы.",
       "Komuz music, Manas storytellers and traditional dance.",
     ],
-    cat: "culture", venue: venue[0]!, day: 12, start: "18:00", end: "20:30", capacity: 280,
+    cat: "culture", venue: venue[0], day: 12, start: "18:00", end: "20:30", capacity: 280,
   },
   {
     t: ["Робототехника боюнча семинар", "Воркшоп по робототехнике", "Robotics Workshop"],
     d: ["Arduino менен биринчи роботуңузду чогултуңуз.", "Соберите своего первого робота на Arduino.", "Build your first Arduino robot."],
-    cat: "it", venue: venue[1]!, day: 14, start: "14:00", end: "17:00", capacity: 25, status: "PENDING", organizer,
+    cat: "it", venue: venue[1], day: 14, start: "14:00", end: "17:00", capacity: 25, status: "PENDING", organizer,
   },
   {
     t: [null, "Дебаты: ИИ в образовании", "Debate: AI in Education"],
     d: [null, "Черновик — описание в работе.", "Draft — description in progress."],
-    cat: "education", venue: venue[3]!, day: 20, start: "16:00", end: "18:00", capacity: 60, status: "DRAFT", organizer,
+    cat: "education", venue: venue[3], day: 20, start: "16:00", end: "18:00", capacity: 60, status: "DRAFT", organizer,
   },
   {
     t: ["Кош келиңиз күнү", "День первокурсника", "Welcome Day"],
@@ -237,12 +188,12 @@ const events: Seed[] = [
       "День знакомства с университетом для первокурсников.",
       "Orientation day for first-year students.",
     ],
-    cat: "festivals", venue: venue[0]!, day: -10, start: "10:00", end: "14:00", capacity: 300, status: "COMPLETED",
+    cat: "festivals", venue: venue[0], day: -10, start: "10:00", end: "14:00", capacity: 300, status: "COMPLETED",
   },
   {
     t: ["Python боюнча интенсив", "Интенсив по Python", "Python Bootcamp"],
     d: ["Бир күндүк интенсив.", "Однодневный интенсив для начинающих.", "One-day beginner bootcamp."],
-    cat: "it", venue: venue[1]!, day: -4, start: "10:00", end: "17:00", capacity: 40, status: "COMPLETED",
+    cat: "it", venue: venue[1], day: -4, start: "10:00", end: "17:00", capacity: 40, status: "COMPLETED",
   },
 ];
 
@@ -258,7 +209,7 @@ for (const e of events) {
              $16,$17,$18,$19,$20,$21,$22)
      RETURNING id`,
     [
-      ...e.t, ...e.d, cat[e.cat], e.venue, e.organizer ?? admin, e.day, e.start, e.end, e.capacity,
+      ...e.t, ...e.d, cat[e.cat], e.venue ?? null, e.organizer ?? admin, e.day, e.start, e.end, e.capacity,
       e.status ?? "PUBLISHED", e.deadlineDays ?? null,
       ...(e.req ?? [null, null, null]), ...(e.program ?? [null, null, null]),
       "students@iku.kg · +996 555 100 200",
@@ -297,7 +248,8 @@ for (const id of others.slice(0, 4)) await register(byTitle("English Speaking Cl
 
 await query(
   `INSERT INTO student_achievements (student_id, achievement_id)
-   SELECT $1, id FROM achievements WHERE code IN ('FIRST_EVENT', 'IT_PARTICIPANT')`,
+   SELECT $1, id FROM achievements WHERE code IN ('FIRST_EVENT', 'IT_PARTICIPANT')
+   ON CONFLICT DO NOTHING`,
   [student],
 );
 
@@ -365,8 +317,11 @@ await query(
   [student, byTitle("IT Hackathon 2026"), byTitle("Football: IKU vs KTU")],
 );
 
-console.log(`Seeded:
-  admin@iku.kg      / Admin123!
-  organizer@iku.kg  / Organizer123!
-  student@iku.kg    / Student123!   (also student1..5@iku.kg)`);
+const show = (a: { email: string; password?: string }) =>
+  `  ${a.email.padEnd(20)} / ${config.isProduction ? "(пароль из переменной окружения)" : a.password}`;
+console.log(`Demo data loaded. Accounts:
+${show(systemAccounts.admin)}   (главный администратор)
+${show(systemAccounts.organizer)}
+${show(systemAccounts.student)}
+  student1..5@iku.kg   / Student123!`);
 await pool.end();

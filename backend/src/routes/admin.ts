@@ -81,11 +81,11 @@ adminRouter.get("/users", async (req, res) => {
     params,
   );
   const items = await query(
-    `SELECT u.id, u.email, u.full_name, u.role, u.is_blocked, u.language, u.created_at,
+    `SELECT u.id, u.email, u.full_name, u.role, u.is_blocked, u.is_main_admin, u.language, u.created_at,
             sp.student_code, sp.group_name, sp.faculty,
             (SELECT COUNT(*) FROM registrations r WHERE r.student_id = u.id AND r.status = 'CONFIRMED') AS registrations
      FROM users u LEFT JOIN student_profiles sp ON sp.user_id = u.id
-     ${whereSql} ORDER BY u.created_at DESC, u.id DESC
+     ${whereSql} ORDER BY u.is_main_admin DESC, u.created_at DESC, u.id DESC
      LIMIT ${p(q.pageSize)} OFFSET ${p((q.page - 1) * q.pageSize)}`,
     params,
   );
@@ -97,6 +97,13 @@ adminRouter.patch("/users/:id", async (req, res) => {
   const data = z
     .object({ role: z.enum(["STUDENT", "ORGANIZER", "ADMIN"]).optional(), is_blocked: z.boolean().optional() })
     .parse(req.body);
+
+  const target = await queryOne(`SELECT id, is_main_admin FROM users WHERE id = $1`, [id]);
+  if (!target) throw notFound("USER_NOT_FOUND");
+  // The main admin always stays an active ADMIN — nobody can block or demote them.
+  if (target.is_main_admin && (data.is_blocked || (data.role && data.role !== "ADMIN"))) {
+    throw new AppError(403, "MAIN_ADMIN_PROTECTED");
+  }
 
   // Prevent an admin from locking themselves out.
   if (id === req.user!.id && (data.is_blocked || (data.role && data.role !== "ADMIN"))) {

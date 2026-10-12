@@ -3,7 +3,7 @@ import { queryOne, query } from "../db";
 /** Public shape of the current user, including the student profile and activity stats. */
 export async function getUserProfile(userId: number) {
   const user = await queryOne(
-    `SELECT u.id, u.email, u.full_name, u.role, u.language, u.avatar, u.created_at,
+    `SELECT u.id, u.email, u.full_name, u.role, u.language, u.avatar, u.created_at, u.is_main_admin,
             sp.student_code, sp.group_name, sp.faculty, sp.phone
      FROM users u
      LEFT JOIN student_profiles sp ON sp.user_id = u.id

@@ -19,7 +19,10 @@
     "register": "Sign up",
     "menu": "Menu",
     "language": "Language",
-    "myEventsShort": "My events"
+    "myEventsShort": "My events",
+    "adminPanel": "Admin panel",
+    "organizerPanel": "Organizer panel",
+    "panelShort": "Panel"
   },
   "hero": {
     "title": "What's happening on campus?",
@@ -205,7 +208,10 @@
     "noAccount": "No account yet?",
     "haveAccount": "Already have an account?",
     "demo": "Demo accounts",
-    "optional": "optional"
+    "optional": "optional",
+    "signedInAs": "You're signed in as {{name}}",
+    "continue": "Continue",
+    "switchAccount": "Sign out and use another account"
   },
   "status": {
     "DRAFT": "Draft",
@@ -250,7 +256,8 @@
     "email": "Enter a valid email",
     "minLength": "At least {{count}} characters",
     "endAfterStart": "End time must be after start time",
-    "titleRequired": "Enter a title in at least one language"
+    "titleRequired": "Enter a title in at least one language",
+    "MAIN_ADMIN_PROTECTED": "The main admin can't be blocked or demoted."
   },
   "common": {
     "loading": "Loading...",
@@ -375,6 +382,23 @@
       "unblock": "Unblock",
       "allRoles": "All roles",
       "searchPlaceholder": "Name, email, ID or group..."
+    },
+    "mainAdmin": "Main admin",
+    "mainAdminHint": "The main admin can't be blocked or demoted",
+    "roleUpdated": "{{name}} is now: {{role}}",
+    "userBlocked": "{{name}} has been blocked",
+    "userUnblocked": "{{name}} has been unblocked",
+    "usersHint": "New users sign up as students. To make someone an organizer or admin, pick a role in the table.",
+    "reviewHint": "Organizers’ events are published by an admin: create an event and press “Submit for review”.",
+    "org": {
+      "total": "My events",
+      "participants": "Participants",
+      "upcoming": "Upcoming",
+      "completed": "Completed",
+      "pending": "In review",
+      "drafts": "Drafts",
+      "nextEvents": "My upcoming events",
+      "empty": "No published upcoming events yet"
     }
   },
   "empty": {
