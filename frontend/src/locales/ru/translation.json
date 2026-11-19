@@ -1,5 +1,5 @@
 {
-  "appName": "IKU Events",
+  "appName": "JASHTAR EVENTS",
   "languages": {
     "ky": "Кыргызча",
     "ru": "Русский",
@@ -100,6 +100,13 @@
     "submitting": "Регистрация...",
     "success": "✅ Вы успешно зарегистрированы!",
     "successHint": "Мероприятие добавлено в «Мои мероприятия». Мы пришлём напоминание.",
+    "ticketTitle": "Электронный билет",
+    "ticketScan": "Покажите QR-код на входе",
+    "ticketEvent": "Мероприятие",
+    "ticketGuest": "Гость",
+    "ticketDate": "Дата",
+    "ticketVenue": "Место",
+    "ticketCode": "Код билета",
     "goToMyEvents": "Мои мероприятия"
   },
   "filters": {

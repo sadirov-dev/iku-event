@@ -5,16 +5,24 @@
  */
 import { pool, query, queryOne } from "./index";
 import { config } from "../config";
-import { ensureReferenceData, ensureSystemAccounts, systemAccounts } from "./bootstrap";
+import {
+  ensureReferenceData,
+  ensureSystemAccounts,
+  systemAccounts,
+} from "./bootstrap";
 
 // Demo data in production only on explicit request (e.g. a workshop demo deploy).
 if (config.isProduction && process.env.SEED_DEMO_DATA !== "true") {
-  throw new Error("Refusing to seed a production database (set SEED_DEMO_DATA=true to load demo data)");
+  throw new Error(
+    "Refusing to seed a production database (set SEED_DEMO_DATA=true to load demo data)",
+  );
 }
 
 const existing = await queryOne(`SELECT COUNT(*) AS n FROM events`);
 if (existing.n > 0) {
-  console.log("Demo data already present — run `bun run db:reset` to start fresh.");
+  console.log(
+    "Demo data already present — run `bun run db:reset` to start fresh.",
+  );
   await pool.end();
   process.exit(0);
 }
@@ -23,7 +31,9 @@ if (existing.n > 0) {
 await ensureReferenceData();
 const accounts = await ensureSystemAccounts();
 if (!accounts.admin || !accounts.organizer || !accounts.student) {
-  throw new Error("Demo data needs ADMIN_PASSWORD, ORGANIZER_PASSWORD and STUDENT_PASSWORD");
+  throw new Error(
+    "Demo data needs ADMIN_PASSWORD, ORGANIZER_PASSWORD and STUDENT_PASSWORD",
+  );
 }
 const { admin, organizer, student } = accounts;
 
@@ -33,14 +43,31 @@ const cat: Record<string, number> = Object.fromEntries(
 const venueByName: Record<string, number> = Object.fromEntries(
   (await query(`SELECT name_ru, id FROM venues`)).map((v) => [v.name_ru, v.id]),
 );
-const venue = ["Главный зал", "Компьютерный класс", "Спортивная площадка", "Конференц-зал", "Кабинет 101"].map(
-  (name) => venueByName[name] ?? null,
-);
+const venue = [
+  "Главный зал",
+  "Компьютерный класс",
+  "Спортивная площадка",
+  "Конференц-зал",
+  "Кабинет 101",
+].map((name) => venueByName[name] ?? null);
 
 // ---------- Demo students ----------
 const demoPasswordHash = await Bun.password.hash("Student123!");
+const demoStudentAvatars = [
+  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=800&q=80",
+];
 const others: number[] = [];
-const names = ["Нургуль Абдыкадырова", "Эмир Жумабеков", "Айпери Мамытова", "Тимур Исаков", "Жылдыз Осмонова"];
+const names = [
+  "Нургуль Абдыкадырова",
+  "Эмир Жумабеков",
+  "Айпери Мамытова",
+  "Тимур Исаков",
+  "Жылдыз Осмонова",
+];
 for (const [i, name] of names.entries()) {
   const u = await queryOne(
     `INSERT INTO users (email, password_hash, full_name, role) VALUES ($1, $2, $3, 'STUDENT')
@@ -50,10 +77,32 @@ for (const [i, name] of names.entries()) {
   await query(
     `INSERT INTO student_profiles (user_id, student_code, group_name, faculty, phone) VALUES ($1,$2,$3,$4,$5)
      ON CONFLICT (user_id) DO NOTHING`,
-    [u.id, `IKU-2024-02${i}0`, i % 2 ? "ЭК-21" : "ПИ-23", i % 2 ? "Экономический факультет" : "Факультет информационных технологий", ""],
+    [
+      u.id,
+      `IKU-2024-02${i}0`,
+      i % 2 ? "ЭК-21" : "ПИ-23",
+      i % 2 ? "Экономический факультет" : "Факультет информационных технологий",
+      "",
+    ],
   );
+  await query(`UPDATE users SET avatar = $1 WHERE id = $2`, [
+    demoStudentAvatars[i],
+    u.id,
+  ]);
   others.push(u.id);
 }
+await query(`UPDATE users SET avatar = $1 WHERE email = $2`, [
+  "https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=800&q=80",
+  systemAccounts.admin.email,
+]);
+await query(`UPDATE users SET avatar = $1 WHERE email = $2`, [
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=800&q=80",
+  systemAccounts.organizer.email,
+]);
+await query(`UPDATE users SET avatar = $1 WHERE email = $2`, [
+  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=800&q=80",
+  systemAccounts.student.email,
+]);
 
 // ---------- Events ----------
 type Seed = {
@@ -80,8 +129,17 @@ const events: Seed[] = [
       "Команды за 6 часов создают проект, который улучшит жизнь кампуса. Лучшие команды получат призы и стажировки!",
       "Teams have 6 hours to build a project that improves campus life. Prizes and internships for the best teams!",
     ],
-    cat: "it", venue: venue[1], day: 0, start: "18:00", end: "23:30", capacity: 40,
-    req: ["Ноутбук, 2–4 кишиден турган команда", "Ноутбук, команда из 2–4 человек", "Laptop, team of 2–4 people"],
+    cat: "it",
+    venue: venue[1],
+    day: 0,
+    start: "18:00",
+    end: "23:30",
+    capacity: 40,
+    req: [
+      "Ноутбук, 2–4 кишиден турган команда",
+      "Ноутбук, команда из 2–4 человек",
+      "Laptop, team of 2–4 people",
+    ],
     program: [
       "18:00 — Ачылыш\n18:30 — Иштөө\n23:00 — Презентациялар",
       "18:00 — Открытие\n18:30 — Работа над проектами\n23:00 — Презентации и награждение",
@@ -95,21 +153,45 @@ const events: Seed[] = [
       "Поёшь, танцуешь или читаешь стендап? Сцена — твоя! Приходи выступить или поддержать друзей.",
       "Sing, dance or do stand-up? The stage is yours! Perform or come cheer your friends on.",
     ],
-    cat: "entertainment", venue: venue[0], day: 0, start: "19:00", end: "22:00", capacity: 250,
+    cat: "entertainment",
+    venue: venue[0],
+    day: 0,
+    start: "19:00",
+    end: "22:00",
+    capacity: 250,
   },
   {
-    t: ["Англис тили клубу", "Разговорный клуб английского", "English Speaking Club"],
+    t: [
+      "Англис тили клубу",
+      "Разговорный клуб английского",
+      "English Speaking Club",
+    ],
     d: [
       "Эркин баарлашуу аркылуу англис тилин жакшыртыңыз. Бардык деңгээлдер үчүн.",
       "Практика разговорного английского в неформальной обстановке. Подходит для любого уровня.",
       "Practise spoken English in a relaxed setting. All levels welcome.",
     ],
-    cat: "education", venue: venue[4], day: 1, start: "15:00", end: "16:30", capacity: 20,
+    cat: "education",
+    venue: venue[4],
+    day: 1,
+    start: "15:00",
+    end: "16:30",
+    capacity: 20,
   },
   {
     t: ["Математика олимпиадасы", "Олимпиада по математике", "Math Olympiad"],
-    d: ["Университеттик математика олимпиадасы.", "Внутривузовская олимпиада по математике.", "University-wide math olympiad."],
-    cat: "contests", venue: venue[3], day: 2, start: "10:00", end: "13:00", capacity: 60, deadlineDays: -1,
+    d: [
+      "Университеттик математика олимпиадасы.",
+      "Внутривузовская олимпиада по математике.",
+      "University-wide math olympiad.",
+    ],
+    cat: "contests",
+    venue: venue[3],
+    day: 2,
+    start: "10:00",
+    end: "13:00",
+    capacity: 60,
+    deadlineDays: -1,
   },
   {
     t: ["Спорт күнү", "Спортивный день", "Sport Day"],
@@ -118,12 +200,26 @@ const events: Seed[] = [
       "Футбол, волейбол, эстафета и много других соревнований между факультетами.",
       "Football, volleyball, relays and more — faculties compete for the cup.",
     ],
-    cat: "sport", venue: venue[2], day: 3, start: "10:00", end: "16:00", capacity: null,
+    cat: "sport",
+    venue: venue[2],
+    day: 3,
+    start: "10:00",
+    end: "16:00",
+    capacity: null,
   },
   {
     t: [null, "Субботник в парке", null],
-    d: [null, "Волонтёрская уборка парка рядом с кампусом. Инвентарь выдадим на месте.", null],
-    cat: "other", venue: venue[2], day: 4, start: "09:00", end: "12:00", capacity: 50,
+    d: [
+      null,
+      "Волонтёрская уборка парка рядом с кампусом. Инвентарь выдадим на месте.",
+      null,
+    ],
+    cat: "other",
+    venue: venue[2],
+    day: 4,
+    start: "09:00",
+    end: "12:00",
+    capacity: 50,
   },
   {
     t: ["Карьера жарманкеси", "Ярмарка карьеры", "Career Fair"],
@@ -132,26 +228,59 @@ const events: Seed[] = [
       "Более 20 компаний предлагают стажировки и вакансии. Возьмите с собой резюме!",
       "20+ companies offering internships and jobs. Bring your CV!",
     ],
-    cat: "career", venue: venue[3], day: 5, start: "11:00", end: "17:00", capacity: 300,
+    cat: "career",
+    venue: venue[3],
+    day: 5,
+    start: "11:00",
+    end: "17:00",
+    capacity: 300,
   },
   {
     t: ["Футбол: IKU vs КТУ", "Футбол: IKU vs КТУ", "Football: IKU vs KTU"],
-    d: ["Достук беттеши.", "Товарищеский матч сборных университетов.", "Friendly match between university teams."],
-    cat: "sport", venue: venue[2], day: 6, start: "16:00", end: "18:00", capacity: null, status: "CANCELLED",
+    d: [
+      "Достук беттеши.",
+      "Товарищеский матч сборных университетов.",
+      "Friendly match between university teams.",
+    ],
+    cat: "sport",
+    venue: venue[2],
+    day: 6,
+    start: "16:00",
+    end: "18:00",
+    capacity: null,
+    status: "CANCELLED",
   },
   {
     t: ["Шахмат турнири", "Шахматный турнир", "Chess Tournament"],
-    d: ["Швейцар системасы боюнча турнир.", "Турнир по швейцарской системе, 7 туров.", "Swiss-system tournament, 7 rounds."],
-    cat: "contests", venue: venue[4], day: 7, start: "14:00", end: "18:00", capacity: 32,
+    d: [
+      "Швейцар системасы боюнча турнир.",
+      "Турнир по швейцарской системе, 7 туров.",
+      "Swiss-system tournament, 7 rounds.",
+    ],
+    cat: "contests",
+    venue: venue[4],
+    day: 7,
+    start: "14:00",
+    end: "18:00",
+    capacity: 32,
   },
   {
-    t: ["Сүрөт тартуу мастер-классы", "Мастер-класс по фотографии", "Photography Masterclass"],
+    t: [
+      "Сүрөт тартуу мастер-классы",
+      "Мастер-класс по фотографии",
+      "Photography Masterclass",
+    ],
     d: [
       "Смартфон менен кесипкөй сүрөт тартууну үйрөнүңүз.",
       "Научитесь делать профессиональные снимки на смартфон.",
       "Learn to take professional-looking photos with your phone.",
     ],
-    cat: "culture", venue: venue[4], day: 8, start: "15:00", end: "17:00", capacity: 3,
+    cat: "culture",
+    venue: venue[4],
+    day: 8,
+    start: "15:00",
+    end: "17:00",
+    capacity: 3,
   },
   {
     t: ["Күзгү фестиваль", "Осенний фестиваль", "Autumn Festival"],
@@ -160,26 +289,66 @@ const events: Seed[] = [
       "Национальная кухня, музыка, игры и ярмарка — праздник для всего кампуса.",
       "Traditional food, music, games and a fair — a celebration for the whole campus.",
     ],
-    cat: "festivals", venue: venue[2], day: 9, start: "12:00", end: "20:00", capacity: null,
+    cat: "festivals",
+    venue: venue[2],
+    day: 9,
+    start: "12:00",
+    end: "20:00",
+    capacity: null,
   },
   {
-    t: ["Кыргыз маданиятынын кечеси", "Вечер кыргызской культуры", "Kyrgyz Culture Evening"],
+    t: [
+      "Кыргыз маданиятынын кечеси",
+      "Вечер кыргызской культуры",
+      "Kyrgyz Culture Evening",
+    ],
     d: [
       "Комуз, манас айтуу жана улуттук бийлер.",
       "Комуз, сказители «Манаса» и национальные танцы.",
       "Komuz music, Manas storytellers and traditional dance.",
     ],
-    cat: "culture", venue: venue[0], day: 12, start: "18:00", end: "20:30", capacity: 280,
+    cat: "culture",
+    venue: venue[0],
+    day: 12,
+    start: "18:00",
+    end: "20:30",
+    capacity: 280,
   },
   {
-    t: ["Робототехника боюнча семинар", "Воркшоп по робототехнике", "Robotics Workshop"],
-    d: ["Arduino менен биринчи роботуңузду чогултуңуз.", "Соберите своего первого робота на Arduino.", "Build your first Arduino robot."],
-    cat: "it", venue: venue[1], day: 14, start: "14:00", end: "17:00", capacity: 25, status: "PENDING", organizer,
+    t: [
+      "Робототехника боюнча семинар",
+      "Воркшоп по робототехнике",
+      "Robotics Workshop",
+    ],
+    d: [
+      "Arduino менен биринчи роботуңузду чогултуңуз.",
+      "Соберите своего первого робота на Arduino.",
+      "Build your first Arduino robot.",
+    ],
+    cat: "it",
+    venue: venue[1],
+    day: 14,
+    start: "14:00",
+    end: "17:00",
+    capacity: 25,
+    status: "PENDING",
+    organizer,
   },
   {
     t: [null, "Дебаты: ИИ в образовании", "Debate: AI in Education"],
-    d: [null, "Черновик — описание в работе.", "Draft — description in progress."],
-    cat: "education", venue: venue[3], day: 20, start: "16:00", end: "18:00", capacity: 60, status: "DRAFT", organizer,
+    d: [
+      null,
+      "Черновик — описание в работе.",
+      "Draft — description in progress.",
+    ],
+    cat: "education",
+    venue: venue[3],
+    day: 20,
+    start: "16:00",
+    end: "18:00",
+    capacity: 60,
+    status: "DRAFT",
+    organizer,
   },
   {
     t: ["Кош келиңиз күнү", "День первокурсника", "Welcome Day"],
@@ -188,40 +357,90 @@ const events: Seed[] = [
       "День знакомства с университетом для первокурсников.",
       "Orientation day for first-year students.",
     ],
-    cat: "festivals", venue: venue[0], day: -10, start: "10:00", end: "14:00", capacity: 300, status: "COMPLETED",
+    cat: "festivals",
+    venue: venue[0],
+    day: -10,
+    start: "10:00",
+    end: "14:00",
+    capacity: 300,
+    status: "COMPLETED",
   },
   {
     t: ["Python боюнча интенсив", "Интенсив по Python", "Python Bootcamp"],
-    d: ["Бир күндүк интенсив.", "Однодневный интенсив для начинающих.", "One-day beginner bootcamp."],
-    cat: "it", venue: venue[1], day: -4, start: "10:00", end: "17:00", capacity: 40, status: "COMPLETED",
+    d: [
+      "Бир күндүк интенсив.",
+      "Однодневный интенсив для начинающих.",
+      "One-day beginner bootcamp.",
+    ],
+    cat: "it",
+    venue: venue[1],
+    day: -4,
+    start: "10:00",
+    end: "17:00",
+    capacity: 40,
+    status: "COMPLETED",
   },
 ];
 
+const eventImages = [
+  "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1541534401786-2077eed87a74?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80",
+];
+
 const eventIds: number[] = [];
-for (const e of events) {
+for (const [index, e] of events.entries()) {
   const row = await queryOne(
     `INSERT INTO events (title_ky, title_ru, title_en, description_ky, description_ru, description_en,
-                         category_id, venue_id, organizer_id, date, start_time, end_time, capacity, status,
+                         image, category_id, venue_id, organizer_id, date, start_time, end_time, capacity, status,
                          registration_deadline, requirements_ky, requirements_ru, requirements_en,
                          program_ky, program_ru, program_en, contact)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, CURRENT_DATE + $10::int, $11, $12, $13, $14,
-             CASE WHEN $15::int IS NULL THEN NULL ELSE (CURRENT_DATE + $15::int)::timestamp + TIME '23:59' END,
-             $16,$17,$18,$19,$20,$21,$22)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, CURRENT_DATE + $11::int, $12, $13, $14, $15,
+             CASE WHEN $16::int IS NULL THEN NULL ELSE (CURRENT_DATE + $16::int)::timestamp + TIME '23:59' END,
+             $17,$18,$19,$20,$21,$22,$23)
      RETURNING id`,
     [
-      ...e.t, ...e.d, cat[e.cat], e.venue ?? null, e.organizer ?? admin, e.day, e.start, e.end, e.capacity,
-      e.status ?? "PUBLISHED", e.deadlineDays ?? null,
-      ...(e.req ?? [null, null, null]), ...(e.program ?? [null, null, null]),
+      ...e.t,
+      ...e.d,
+      eventImages[index] ?? null,
+      cat[e.cat],
+      e.venue ?? null,
+      e.organizer ?? admin,
+      e.day,
+      e.start,
+      e.end,
+      e.capacity,
+      e.status ?? "PUBLISHED",
+      e.deadlineDays ?? null,
+      ...(e.req ?? [null, null, null]),
+      ...(e.program ?? [null, null, null]),
       "students@iku.kg · +996 555 100 200",
     ],
   );
   eventIds.push(row.id);
 }
 
-const byTitle = (en: string) => eventIds[events.findIndex((e) => e.t[2] === en || e.t[1] === en)]!;
+const byTitle = (en: string) =>
+  eventIds[events.findIndex((e) => e.t[2] === en || e.t[1] === en)]!;
 
 // ---------- Registrations ----------
-async function register(eventId: number, userId: number, attended = false, status = "CONFIRMED") {
+async function register(
+  eventId: number,
+  userId: number,
+  attended = false,
+  status = "CONFIRMED",
+) {
   const u = await queryOne(
     `SELECT u.full_name, u.email, sp.student_code, sp.group_name, sp.faculty FROM users u
      LEFT JOIN student_profiles sp ON sp.user_id = u.id WHERE u.id = $1`,
@@ -230,7 +449,17 @@ async function register(eventId: number, userId: number, attended = false, statu
   await query(
     `INSERT INTO registrations (event_id, student_id, full_name, email, student_code, group_name, faculty, attended, status)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-    [eventId, userId, u.full_name, u.email, u.student_code ?? "—", u.group_name ?? "—", u.faculty, attended, status],
+    [
+      eventId,
+      userId,
+      u.full_name,
+      u.email,
+      u.student_code ?? "—",
+      u.group_name ?? "—",
+      u.faculty,
+      attended,
+      status,
+    ],
   );
 }
 
@@ -243,8 +472,10 @@ for (const [i, id] of others.entries()) {
   await register(byTitle("IT Hackathon 2026"), id);
   await register(byTitle("Welcome Day"), id, i < 3); // not everyone who registers shows up
 }
-for (const id of others.slice(0, 3)) await register(byTitle("Photography Masterclass"), id);
-for (const id of others.slice(0, 4)) await register(byTitle("English Speaking Club"), id);
+for (const id of others.slice(0, 3))
+  await register(byTitle("Photography Masterclass"), id);
+for (const id of others.slice(0, 4))
+  await register(byTitle("English Speaking Club"), id);
 
 await query(
   `INSERT INTO student_achievements (student_id, achievement_id)
@@ -254,51 +485,119 @@ await query(
 );
 
 // ---------- Announcements ----------
-const announcements: [string, string, string, string, string, string, string, string, boolean, number | null][] = [
+const announcementImages = [
+  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1541534401786-2077eed87a74?auto=format&fit=crop&w=1200&q=80",
+];
+const announcements: [
+  string,
+  string,
+  string,
+  string,
+  string,
+  string,
+  string,
+  string,
+  boolean,
+  number | null,
+][] = [
   [
-    "Сессиянын жүгүртмөсү жарыяланды", "Опубликовано расписание сессии", "Exam schedule published",
+    "Сессиянын жүгүртмөсү жарыяланды",
+    "Опубликовано расписание сессии",
+    "Exam schedule published",
     "Кышкы сессиянын жүгүртмөсү деканаттын сайтында жана маалымат тактасында жеткиликтүү.",
     "Расписание зимней сессии доступно на сайте деканата и на информационном стенде в корпусе А.",
     "The winter exam schedule is available on the dean's office website and on the notice board in building A.",
-    "ACADEMIC", "HIGH", true, null,
+    "ACADEMIC",
+    "HIGH",
+    true,
+    null,
   ],
   [
-    "Шашылыш: эртең сабактар онлайн өтөт", "Срочно: завтра занятия проходят онлайн", "Urgent: classes are online tomorrow",
+    "Шашылыш: эртең сабактар онлайн өтөт",
+    "Срочно: завтра занятия проходят онлайн",
+    "Urgent: classes are online tomorrow",
     "Жылуулук тармагындагы оңдоо иштерине байланыштуу эртең бардык сабактар онлайн форматта өтөт.",
     "В связи с ремонтом теплосети завтра все занятия проходят в онлайн-формате. Ссылки — у кураторов.",
     "Due to heating repairs, all classes tomorrow will be held online. Ask your curator for links.",
-    "URGENT", "HIGH", false, 2,
+    "URGENT",
+    "HIGH",
+    false,
+    2,
   ],
   [
-    "Хакатонго каттоо ачык", "Открыта регистрация на хакатон", "Hackathon registration is open",
+    "Хакатонго каттоо ачык",
+    "Открыта регистрация на хакатон",
+    "Hackathon registration is open",
     "IT Хакатон 2026га катталууга шашылыңыз — орундар чектелүү!",
     "Успейте зарегистрироваться на IT Хакатон 2026 — количество мест ограничено!",
     "Register for IT Hackathon 2026 — places are limited!",
-    "EVENT", "NORMAL", false, null,
+    "EVENT",
+    "NORMAL",
+    false,
+    null,
   ],
   [
-    "Китепкананын жаңы иш убактысы", "Новый график работы библиотеки", "New library opening hours",
+    "Китепкананын жаңы иш убактысы",
+    "Новый график работы библиотеки",
+    "New library opening hours",
     "Китепкана эми дүйшөмбүдөн ишембиге чейин 08:00–20:00 иштейт.",
     "Библиотека теперь работает с понедельника по субботу с 08:00 до 20:00.",
     "The library is now open Monday to Saturday, 08:00–20:00.",
-    "GENERAL", "NORMAL", false, null,
+    "GENERAL",
+    "NORMAL",
+    false,
+    null,
   ],
   [
-    "Стипендия боюнча документтер", "Документы на стипендию", "Scholarship documents",
+    "Стипендия боюнча документтер",
+    "Документы на стипендию",
+    "Scholarship documents",
     "Стипендияга документтерди 15-октябрга чейин тапшыруу керек.",
     "Документы на повышенную стипендию принимаются до 15 октября в кабинете 105.",
     "Applications for the merit scholarship are accepted until 15 October in room 105.",
-    "IMPORTANT", "HIGH", false, null,
+    "IMPORTANT",
+    "HIGH",
+    false,
+    null,
   ],
 ];
 for (const [i, a] of announcements.entries()) {
-  const [tky, tru, ten, cky, cru, cen, category, priority, pinned, expiresDays] = a;
+  const [
+    tky,
+    tru,
+    ten,
+    cky,
+    cru,
+    cen,
+    category,
+    priority,
+    pinned,
+    expiresDays,
+  ] = a;
   await query(
     `INSERT INTO announcements (title_ky, title_ru, title_en, content_ky, content_ru, content_en, category, priority,
-                                is_pinned, author_id, published_at, expires_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, NOW() - make_interval(hours => $11::int),
-             CASE WHEN $12::int IS NULL THEN NULL ELSE NOW() + make_interval(days => $12::int) END)`,
-    [tky, tru, ten, cky, cru, cen, category, priority, pinned, admin, i * 20, expiresDays],
+                                is_pinned, image, author_id, published_at, expires_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, NOW() - make_interval(hours => $12::int),
+             CASE WHEN $13::int IS NULL THEN NULL ELSE NOW() + make_interval(days => $13::int) END)`,
+    [
+      tky,
+      tru,
+      ten,
+      cky,
+      cru,
+      cen,
+      category,
+      priority,
+      pinned,
+      announcementImages[i] ?? null,
+      admin,
+      i * 20,
+      expiresDays,
+    ],
   );
 }
 

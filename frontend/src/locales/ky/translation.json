@@ -1,5 +1,5 @@
 {
-  "appName": "IKU Events",
+  "appName": "JASHTAR EVENTS",
   "languages": {
     "ky": "Кыргызча",
     "ru": "Русский",
@@ -95,7 +95,14 @@
     "submit": "Катталуу",
     "submitting": "Катталууда...",
     "success": "✅ Сиз ийгиликтүү катталдыңыз!",
-    "successHint": "Иш-чара «Менин иш-чараларым» бөлүмүнө кошулду. Биз эскертме жиберебиз.",
+    "successHint": "Иш-чара «Менин иш-чараларым» бөлүмüne кошулду. Биз эскертме жиберебиз.",
+    "ticketTitle": "Электрондук билет",
+    "ticketScan": "Кирүүдө QR-кодду көрсөткүлө",
+    "ticketEvent": "Иш-чара",
+    "ticketGuest": "Конок",
+    "ticketDate": "Күни",
+    "ticketVenue": "Жай",
+    "ticketCode": "Билеттин коду",
     "goToMyEvents": "Менин иш-чараларым"
   },
   "filters": {
