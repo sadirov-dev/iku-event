@@ -7,9 +7,7 @@ import { bootstrap } from "./db/bootstrap";
 await bootstrap();
 
 app.listen(config.port, () => {
-  console.log(
-    `JASHTAR EVENTS API listening on http://localhost:${config.port}`,
-  );
+  console.log(`IKU EVENTS API listening on http://localhost:${config.port}`);
 });
 
 // "Starts in 1 hour" reminders.

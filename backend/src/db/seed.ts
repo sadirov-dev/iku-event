@@ -380,6 +380,60 @@ const events: Seed[] = [
     capacity: 40,
     status: "COMPLETED",
   },
+  {
+    t: [
+      "Кампустук стартап-час",
+      "Кампусный стартап-час",
+      "Campus Startup Hour",
+    ],
+    d: [
+      "Студенттик долбоорлорду компаниялардын адистери менен пичинг форматында талкуулаңыз.",
+      "Представьте студенческий проект экспертам и компаниям в формате питча.",
+      "Pitch your student project to experts and company representatives.",
+    ],
+    cat: "career",
+    venue: venue[3],
+    day: 1,
+    start: "17:00",
+    end: "19:30",
+    capacity: 80,
+  },
+  {
+    t: [
+      "Жаштар музыкалык вечери",
+      "Музыкальный вечер JASHTAR",
+      "JASHTAR Music Night",
+    ],
+    d: [
+      "Студенттик топтор, акустикалык музыка жана жандуу шоу.",
+      "Студенческие группы, акустическая музыка и живое шоу.",
+      "Student bands, acoustic sets and a live campus show.",
+    ],
+    cat: "entertainment",
+    venue: venue[0],
+    day: 4,
+    start: "18:30",
+    end: "22:00",
+    capacity: 300,
+  },
+  {
+    t: [
+      "Мобилдик дизайн мастер-классы",
+      "Мастер-класс по мобильному дизайну",
+      "Mobile Design Workshop",
+    ],
+    d: [
+      "Figmaда практикалык жол менен мобилдик интерфейс түзүңүз.",
+      "Практически создайте мобильный интерфейс в Figma с опытным дизайнером.",
+      "Create a mobile interface in Figma with a professional designer.",
+    ],
+    cat: "it",
+    venue: venue[1],
+    day: 8,
+    start: "14:00",
+    end: "17:00",
+    capacity: 35,
+  },
 ];
 
 const eventImages = [
@@ -397,6 +451,9 @@ const eventImages = [
   "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1200&q=80",
   "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80",
   "https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&w=1200&q=80",
 ];
 
 const eventIds: number[] = [];

@@ -47,7 +47,7 @@ export function Logo() {
     >
       <img src="/favicon.svg" alt="" className="size-8" />
       <span className="text-lg leading-none">
-        <span className="text-brand-700">JASHTAR</span>{" "}
+        <span className="text-brand-700">IKU</span>{" "}
         <span className="text-slate-700">EVENTS</span>
       </span>
     </Link>
@@ -450,7 +450,7 @@ export default function Layout() {
 
       <footer className="hidden border-t border-slate-200 bg-white py-8 text-sm text-slate-500 lg:block">
         <div className="container-page flex items-center justify-between">
-          <span>© {new Date().getFullYear()} JASHTAR EVENTS</span>
+          <span>© {new Date().getFullYear()} IKU EVENTS</span>
           <span>{t("hero.subtitle")}</span>
         </div>
       </footer>
