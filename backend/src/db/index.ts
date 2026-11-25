@@ -9,6 +9,7 @@ pg.types.setTypeParser(20, (v) => Number(v));
 export const pool = new pg.Pool({
   connectionString: config.databaseUrl,
   options: `-c timezone=${config.timezone}`,
+  ssl: config.databaseSsl ? { rejectUnauthorized: false } : undefined,
   max: 10,
 });
 
@@ -32,7 +33,9 @@ export async function queryOne<T extends pg.QueryResultRow = any>(
   return rows[0] ?? null;
 }
 
-export async function transaction<T>(fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {
+export async function transaction<T>(
+  fn: (client: pg.PoolClient) => Promise<T>,
+): Promise<T> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");

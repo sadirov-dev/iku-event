@@ -14,9 +14,12 @@ export const config = {
   isProduction,
   port: Number(env.PORT ?? 4000),
   databaseUrl: required("DATABASE_URL"),
+  databaseSsl: env.DATABASE_SSL === "true",
   jwtSecret: required("JWT_SECRET"),
   jwtExpiresIn: env.JWT_EXPIRES_IN ?? "7d",
-  corsOrigins: (env.CORS_ORIGIN ?? "http://localhost:5173").split(",").map((s) => s.trim()),
+  corsOrigins: (env.CORS_ORIGIN ?? "http://localhost:5173")
+    .split(",")
+    .map((s) => s.trim()),
   timezone: env.APP_TIMEZONE ?? "Asia/Bishkek",
   uploadDir: path.resolve(env.UPLOAD_DIR ?? "uploads"),
   /** Built frontend (frontend/dist). When set, the API also serves the site — one container, one domain. */

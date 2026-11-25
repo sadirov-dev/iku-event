@@ -4,7 +4,15 @@ import { sendDueReminders } from "./lib/notifications";
 import { bootstrap } from "./db/bootstrap";
 
 // Reference data + main admin and the demo accounts — always present, whatever the database state.
-await bootstrap();
+try {
+  await bootstrap();
+} catch (error) {
+  console.error(
+    "Database startup failed:",
+    error instanceof Error ? error.message : error,
+  );
+  process.exit(1);
+}
 
 app.listen(config.port, () => {
   console.log(`IKU EVENTS API listening on http://localhost:${config.port}`);

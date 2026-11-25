@@ -1,0 +1,43 @@
+databases:
+  - name: iku-events-db
+    databaseName: iku_events
+    plan: free
+
+services:
+  - type: web
+    name: iku-events
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: iku-events-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "false"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: APP_TIMEZONE
+        value: Asia/Bishkek
+      - key: STATIC_DIR
+        value: /app/frontend/dist
+      - key: UPLOAD_DIR
+        value: /app/backend/uploads
+      - key: ADMIN_EMAIL
+        value: admin@iku.kg
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: ORGANIZER_EMAIL
+        value: organizer@iku.kg
+      - key: ORGANIZER_PASSWORD
+        generateValue: true
+      - key: STUDENT_EMAIL
+        value: student@iku.kg
+      - key: STUDENT_PASSWORD
+        generateValue: true
