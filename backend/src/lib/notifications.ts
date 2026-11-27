@@ -15,11 +15,27 @@ interface EventTitles {
   title_ky: string | null;
   title_ru: string | null;
   title_en: string | null;
+  title_ar?: string | null;
 }
 
 /** Same fallback rule as the frontend: requested language → Russian → Kyrgyz → English. */
-function pick(titles: EventTitles, lang: "ky" | "ru" | "en"): string {
-  return titles[`title_${lang}`] ?? titles.title_ru ?? titles.title_ky ?? titles.title_en ?? "";
+function pick(titles: EventTitles, lang: "ky" | "ru" | "en" | "ar"): string {
+  if (lang === "ar") {
+    return (
+      titles.title_ar ??
+      titles.title_ru ??
+      titles.title_ky ??
+      titles.title_en ??
+      ""
+    );
+  }
+  return (
+    titles[`title_${lang}`] ??
+    titles.title_ru ??
+    titles.title_ky ??
+    titles.title_en ??
+    ""
+  );
 }
 
 /** Notifications are stored in all three languages so they render in whatever language the user picks later. */
@@ -28,7 +44,11 @@ const templates: Record<
   { title: Localized; message: (t: Localized) => Localized }
 > = {
   REGISTRATION: {
-    title: { ky: "Каттоо ырасталды", ru: "Регистрация подтверждена", en: "Registration confirmed" },
+    title: {
+      ky: "Каттоо ырасталды",
+      ru: "Регистрация подтверждена",
+      en: "Registration confirmed",
+    },
     message: (t) => ({
       ky: `Сиз «${t.ky}» иш-чарасына катталдыңыз.`,
       ru: `Вы зарегистрированы на «${t.ru}».`,
@@ -52,7 +72,11 @@ const templates: Record<
     }),
   },
   VENUE_CHANGED: {
-    title: { ky: "Өтүүчү жер өзгөрдү", ru: "Место изменено", en: "Venue changed" },
+    title: {
+      ky: "Өтүүчү жер өзгөрдү",
+      ru: "Место изменено",
+      en: "Venue changed",
+    },
     message: (t) => ({
       ky: `«${t.ky}» иш-чарасынын өтүүчү жери өзгөртүлдү.`,
       ru: `Место проведения «${t.ru}» было изменено.`,
@@ -60,7 +84,11 @@ const templates: Record<
     }),
   },
   EVENT_CANCELLED: {
-    title: { ky: "Иш-чара жокко чыгарылды", ru: "Мероприятие отменено", en: "Event cancelled" },
+    title: {
+      ky: "Иш-чара жокко чыгарылды",
+      ru: "Мероприятие отменено",
+      en: "Event cancelled",
+    },
     message: (t) => ({
       ky: `«${t.ky}» иш-чарасы жокко чыгарылды.`,
       ru: `Мероприятие «${t.ru}» было отменено.`,
@@ -69,7 +97,11 @@ const templates: Record<
   },
 };
 
-const titlesFor = (e: EventTitles): Localized => ({ ky: pick(e, "ky"), ru: pick(e, "ru"), en: pick(e, "en") });
+const titlesFor = (e: EventTitles): Localized => ({
+  ky: pick(e, "ky"),
+  ru: pick(e, "ru"),
+  en: pick(e, "en"),
+});
 
 async function insert(
   db: Db,
@@ -83,7 +115,17 @@ async function insert(
   await query(
     `INSERT INTO notifications (user_id, type, title_ky, title_ru, title_en, message_ky, message_ru, message_en, link)
      SELECT unnest($1::int[]), $2, $3, $4, $5, $6, $7, $8, $9`,
-    [userIds, type, title.ky, title.ru, title.en, message.ky, message.ru, message.en, link],
+    [
+      userIds,
+      type,
+      title.ky,
+      title.ru,
+      title.en,
+      message.ky,
+      message.ru,
+      message.en,
+      link,
+    ],
     db,
   );
 }
@@ -95,7 +137,14 @@ export async function notifyEvent(
   db: Db = pool,
 ) {
   const tpl = templates[type];
-  await insert(db, userIds, type, tpl.title, tpl.message(titlesFor(event)), `/events/${event.id}`);
+  await insert(
+    db,
+    userIds,
+    type,
+    tpl.title,
+    tpl.message(titlesFor(event)),
+    `/events/${event.id}`,
+  );
 }
 
 /** Notify every confirmed participant of an event. */
@@ -109,10 +158,18 @@ export async function notifyParticipants(
     [event.id],
     db,
   );
-  await notifyEvent(type, event, rows.map((r) => r.student_id), db);
+  await notifyEvent(
+    type,
+    event,
+    rows.map((r) => r.student_id),
+    db,
+  );
 }
 
-export async function notifyAnnouncement(announcement: EventTitles & { id: number }, db: Db = pool) {
+export async function notifyAnnouncement(
+  announcement: EventTitles & { id: number },
+  db: Db = pool,
+) {
   const students = await query<{ id: number }>(
     `SELECT id FROM users WHERE role = 'STUDENT' AND is_blocked = FALSE`,
     [],
@@ -122,7 +179,11 @@ export async function notifyAnnouncement(announcement: EventTitles & { id: numbe
     db,
     students.map((s) => s.id),
     "ANNOUNCEMENT",
-    { ky: "Жаңы маанилүү кулактандыруу", ru: "Новое важное объявление", en: "New important announcement" },
+    {
+      ky: "Жаңы маанилүү кулактандыруу",
+      ru: "Новое важное объявление",
+      en: "New important announcement",
+    },
     titlesFor(announcement),
     `/announcements/${announcement.id}`,
   );
@@ -130,17 +191,30 @@ export async function notifyAnnouncement(announcement: EventTitles & { id: numbe
 
 export async function notifyAchievement(
   userId: number,
-  achievement: { name_ky: string | null; name_ru: string | null; name_en: string | null; icon: string | null },
+  achievement: {
+    name_ky: string | null;
+    name_ru: string | null;
+    name_en: string | null;
+    icon: string | null;
+  },
   db: Db = pool,
 ) {
-  const n = { title_ky: achievement.name_ky, title_ru: achievement.name_ru, title_en: achievement.name_en };
+  const n = {
+    title_ky: achievement.name_ky,
+    title_ru: achievement.name_ru,
+    title_en: achievement.name_en,
+  };
   const t = titlesFor(n);
   const icon = achievement.icon ? `${achievement.icon} ` : "";
   await insert(
     db,
     [userId],
     "ACHIEVEMENT",
-    { ky: "Жаңы жетишкендик!", ru: "Новое достижение!", en: "New achievement!" },
+    {
+      ky: "Жаңы жетишкендик!",
+      ru: "Новое достижение!",
+      en: "New achievement!",
+    },
     { ky: `${icon}${t.ky}`, ru: `${icon}${t.ru}`, en: `${icon}${t.en}` },
     "/profile",
   );

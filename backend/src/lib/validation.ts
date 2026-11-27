@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const langSchema = z.enum(["ky", "ru", "en"]);
+export const langSchema = z.enum(["ky", "ru", "en", "ar"]);
 
 /** Trimmed optional text: empty strings become null so "missing translation" is uniform. */
 export const optText = (max = 10_000) =>
@@ -25,9 +25,10 @@ export const uploadPath = z
   .nullish()
   .transform((v) => v ?? null);
 
-export const LOCALES = ["ky", "ru", "en"] as const;
+export const LOCALES = ["ky", "ru", "en", "ar"] as const;
 
 /** At least one language variant of `field` must be filled in. */
 export function hasSomeTranslation(field: string) {
-  return (obj: Record<string, unknown>) => LOCALES.some((l) => obj[`${field}_${l}`]);
+  return (obj: Record<string, unknown>) =>
+    LOCALES.some((l) => obj[`${field}_${l}`]);
 }

@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   full_name      TEXT NOT NULL,
   role           TEXT NOT NULL DEFAULT 'STUDENT' CHECK (role IN ('STUDENT', 'ORGANIZER', 'ADMIN')),
   is_blocked     BOOLEAN NOT NULL DEFAULT FALSE,
-  language       TEXT NOT NULL DEFAULT 'ru' CHECK (language IN ('ky', 'ru', 'en')),
+  language       TEXT NOT NULL DEFAULT 'ru' CHECK (language IN ('ky', 'ru', 'en', 'ar')),
   avatar         TEXT,
   token_version  INTEGER NOT NULL DEFAULT 0,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),

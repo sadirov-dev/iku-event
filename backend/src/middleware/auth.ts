@@ -5,7 +5,7 @@ import { queryOne } from "../db";
 import { AppError } from "../lib/errors";
 
 export type Role = "STUDENT" | "ORGANIZER" | "ADMIN";
-export type Lang = "ky" | "ru" | "en";
+export type Lang = "ky" | "ru" | "en" | "ar";
 
 export interface AuthUser {
   id: number;
@@ -42,7 +42,9 @@ async function resolveUser(req: Request): Promise<AuthUser | undefined> {
 
   let payload: TokenPayload;
   try {
-    payload = jwt.verify(header.slice(7), config.jwtSecret, { algorithms: ["HS256"] }) as TokenPayload;
+    payload = jwt.verify(header.slice(7), config.jwtSecret, {
+      algorithms: ["HS256"],
+    }) as TokenPayload;
   } catch {
     throw new AppError(401, "UNAUTHORIZED");
   }
@@ -53,19 +55,34 @@ async function resolveUser(req: Request): Promise<AuthUser | undefined> {
     `SELECT id, email, full_name, role, language, is_blocked, token_version FROM users WHERE id = $1`,
     [Number(payload.sub)],
   );
-  if (!user || user.token_version !== payload.ver) throw new AppError(401, "UNAUTHORIZED");
+  if (!user || user.token_version !== payload.ver)
+    throw new AppError(401, "UNAUTHORIZED");
   if (user.is_blocked) throw new AppError(403, "USER_BLOCKED");
 
-  return { id: user.id, email: user.email, full_name: user.full_name, role: user.role, language: user.language };
+  return {
+    id: user.id,
+    email: user.email,
+    full_name: user.full_name,
+    role: user.role,
+    language: user.language,
+  };
 }
 
 /** Attaches req.user when a valid token is present; anonymous requests pass through. */
-export async function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+export async function optionalAuth(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
   req.user = await resolveUser(req);
   next();
 }
 
-export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
+export async function requireAuth(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
   req.user = await resolveUser(req);
   if (!req.user) throw new AppError(401, "UNAUTHORIZED");
   next();
